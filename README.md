@@ -10,6 +10,18 @@ Digital Publishing Image API
 
 * No further dependencies other than those defined in `go.mod`
 
+### Tools
+
+To run some of our tests you will need additional tooling:
+
+#### Audit
+
+We use `dis-vulncheck` to do auditing, which you will [need to install](https://github.com/ONSdigital/dis-vulncheck).
+
+#### Linting
+
+We use v2 of golangci-lint, which you will [need to install](https://golangci-lint.run/docs/welcome/install).
+
 ### Configuration
 
 | Environment variable         | Default                                                    | Description                                                                                                        |
@@ -29,7 +41,7 @@ Digital Publishing Image API
 | HEALTHCHECK_INTERVAL         | 30s                                                        | Time between self-healthchecks (`time.Duration` format)                                                            |
 | HEALTHCHECK_CRITICAL_TIMEOUT | 90s                                                        | Time to wait until an unhealthy dependent propagates its state to make this app unhealthy (`time.Duration` format) |
 | IS_PUBLISHING                | true                                                       | Determines if the instance is publishing or not                                                                    |
-| ZEBEDEE_URL                  | http://localhost:8082                                      | The URL of zebedee (publishing mode only)                                                                          |
+| ZEBEDEE_URL                  | <http://localhost:8082>                                      | The URL of zebedee (publishing mode only)                                                                          |
 | MONGODB_BIND_ADDR            | localhost:27017                                            | The MongoDB bind address                                                                                           |
 | MONGODB_USERNAME             |                                                            | The MongoDB Username                                                                                               |
 | MONGODB_PASSWORD             |                                                            | The MongoDB Password                                                                                               |
@@ -52,7 +64,6 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details.
 
 ### License
 
-Copyright © 2021-2022, Office for National Statistics (https://www.ons.gov.uk)
+Copyright © 2021-2022, Office for National Statistics (<https://www.ons.gov.uk>)
 
 Released under MIT license, see [LICENSE](LICENSE.md) for details.
-
