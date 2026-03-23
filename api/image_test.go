@@ -384,14 +384,15 @@ var emptyImages = models.Images{
 
 // API response for GET …/downloads
 func apiGetDownloadsResponse(downloads ...models.Download) *models.Downloads {
-	downloadsList := []models.Download{}
+	lenDownloads := len(downloads)
+	downloadsList := make([]models.Download, 0, lenDownloads)
 	downloadsList = append(downloadsList, downloads...)
 	return &models.Downloads{
-		Count:      len(downloads),
+		Count:      lenDownloads,
 		Offset:     0,
-		Limit:      len(downloads),
+		Limit:      lenDownloads,
 		Items:      downloadsList,
-		TotalCount: len(downloads),
+		TotalCount: lenDownloads,
 	}
 }
 
