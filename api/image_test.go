@@ -316,7 +316,8 @@ func apiFullImage(state models.State) *models.Image {
 		Links: &models.ImageLinks{
 			Self:      fmt.Sprintf("http://example.com/images/%s", testImageID2),
 			Downloads: fmt.Sprintf("http://example.com/images/%s/downloads", testImageID2),
-		}, Type: "chart",
+		},
+		Type:  "chart",
 		State: state.String(),
 		Upload: &models.Upload{
 			Path: testUploadPath,
