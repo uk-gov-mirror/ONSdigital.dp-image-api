@@ -3,7 +3,7 @@ module github.com/ONSdigital/dp-image-api
 go 1.26.0
 
 require (
-	github.com/ONSdigital/dp-api-clients-go/v2 v2.277.0
+	github.com/ONSdigital/dp-api-clients-go/v2 v2.273.0
 	github.com/ONSdigital/dp-authorisation v0.5.0
 	github.com/ONSdigital/dp-healthcheck v1.6.4
 	github.com/ONSdigital/dp-kafka/v3 v3.11.0
