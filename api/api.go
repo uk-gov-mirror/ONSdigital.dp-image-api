@@ -12,9 +12,7 @@ import (
 	dpauth "github.com/ONSdigital/dp-authorisation/auth"
 	"github.com/ONSdigital/dp-image-api/apierrors"
 	"github.com/ONSdigital/dp-image-api/config"
-	"github.com/ONSdigital/dp-image-api/event"
-	"github.com/ONSdigital/dp-image-api/schema"
-	kafka "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v5"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 )
@@ -24,8 +22,8 @@ type API struct {
 	Router             *mux.Router
 	mongoDB            MongoServer
 	auth               AuthHandler
-	uploadProducer     *event.AvroProducer
-	publishedProducer  *event.AvroProducer
+	uploadProducer     kafka.IProducer
+	publishedProducer  kafka.IProducer
 	urlBuilder         *dpurl.Builder
 	downloadServiceURL string
 	apiUrl             *url.URL
@@ -51,8 +49,8 @@ func Setup(ctx context.Context, cfg *config.Config, r *mux.Router, auth AuthHand
 	}
 
 	if cfg.IsPublishing {
-		api.uploadProducer = event.NewAvroProducer(uploadedKafkaProducer.Channels().Output, schema.ImageUploadedEvent)
-		api.publishedProducer = event.NewAvroProducer(publishedKafkaProducer.Channels().Output, schema.ImagePublishedEvent)
+		api.uploadProducer = uploadedKafkaProducer
+		api.publishedProducer = publishedKafkaProducer
 		r.HandleFunc("/images", auth.Require(dpauth.Permissions{Read: true}, api.GetImagesHandler)).Methods(http.MethodGet)
 		r.HandleFunc("/images", auth.Require(dpauth.Permissions{Create: true}, api.CreateImageHandler)).Methods(http.MethodPost)
 		r.HandleFunc("/images/{id}", auth.Require(dpauth.Permissions{Read: true}, api.GetImageHandler)).Methods(http.MethodGet)

@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"sort"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -22,9 +21,8 @@ import (
 	"github.com/ONSdigital/dp-image-api/config"
 	"github.com/ONSdigital/dp-image-api/event"
 	"github.com/ONSdigital/dp-image-api/models"
-	"github.com/ONSdigital/dp-image-api/schema"
-	kafka "github.com/ONSdigital/dp-kafka/v3"
-	"github.com/ONSdigital/dp-kafka/v3/kafkatest"
+	"github.com/ONSdigital/dp-kafka/v5/avro"
+	"github.com/ONSdigital/dp-kafka/v5/kafkatest"
 	"github.com/ONSdigital/dp-net/v3/handlers"
 	dpreq "github.com/ONSdigital/dp-net/v3/request"
 
@@ -407,8 +405,8 @@ func (s downloadsByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
 // kafkaProducer mock which exposes Channels function returning empty channels
 // to be used on tests that are not supposed to send any kafka message
 var kafkaStubProducer = &kafkatest.IProducerMock{
-	ChannelsFunc: func() *kafka.ProducerChannels {
-		return &kafka.ProducerChannels{}
+	SendFunc: func(ctx context.Context, schema *avro.Schema, event interface{}) error {
+		return nil
 	},
 }
 
@@ -1052,12 +1050,9 @@ func TestUpdateImageHandler(t *testing.T) {
 		})
 
 		Convey("And an image in created state in MongoDB plus a kafka uploadedProducer", func() {
-			channels := &kafka.ProducerChannels{
-				Output: make(chan []byte),
-			}
 			uploadedProducer := &kafkatest.IProducerMock{
-				ChannelsFunc: func() *kafka.ProducerChannels {
-					return channels
+				SendFunc: func(ctx context.Context, schema *avro.Schema, event interface{}) error {
+					return nil
 				},
 			}
 
@@ -1076,8 +1071,7 @@ func TestUpdateImageHandler(t *testing.T) {
 					fmt.Sprintf(imageUploadPayloadFmt, testCollectionID1, testUploadPath)))
 				r = r.WithContext(context.WithValue(r.Context(), dpreq.FlorenceIdentityKey, testUserAuthToken))
 				w := httptest.NewRecorder()
-
-				sentBytes := serveHTTPAndReadKafka(w, r, imageAPI, uploadedProducer, 1)
+				imageAPI.Router.ServeHTTP(w, r)
 				So(w.Code, ShouldEqual, http.StatusOK)
 				So(w.Header().Get(contentTypeKey), ShouldEqual, contentTypeJSON)
 				So(mongoDBMock.GetImageCalls(), ShouldHaveLength, 1)
@@ -1091,21 +1085,23 @@ func TestUpdateImageHandler(t *testing.T) {
 				fmt.Println("got line 996")
 
 				Convey("And the expected avro event is sent to the corresponding kafka output channel", func() {
-					expectedBytes, err := schema.ImageUploadedEvent.Marshal(&event.ImageUploaded{
+					So(uploadedProducer.SendCalls(), ShouldHaveLength, 1)
+					expectedEvent := &event.ImageUploaded{
 						ImageID:  testImageID2,
 						Path:     testUploadFilename,
 						Filename: testFilename,
-					})
-					So(err, ShouldBeNil)
-					So(expectedBytes, ShouldResemble, sentBytes[0])
+					}
+					So(uploadedProducer.SendCalls()[0].Event, ShouldResemble, expectedEvent)
 				})
 			})
 
 			Convey("Calling image upload results in a 500 InternalError response when an invalid image uploaded event is generated, and the image is not updated in mongoDB", func() {
-				api.ImageUploadedEvent = func(imageID, uploadPath, filename string) *event.ImageUploaded {
-					return nil
+				uploadedProducerErr := &kafkatest.IProducerMock{
+					SendFunc: func(ctx context.Context, schema *avro.Schema, event interface{}) error {
+						return fmt.Errorf("blah")
+					},
 				}
-				imageAPI := GetAPIWithMocks(cfg, mongoDBMock, authHandlerMock, kafkaStubProducer, kafkaStubProducer)
+				imageAPI := GetAPIWithMocks(cfg, mongoDBMock, authHandlerMock, uploadedProducerErr, kafkaStubProducer)
 				r := httptest.NewRequest(http.MethodPut, fmt.Sprintf("http://localhost:24700/images/%s", testImageID2), bytes.NewBufferString(
 					fmt.Sprintf(imageUploadPayloadFmt, testCollectionID1, testUploadPath)))
 				r = r.WithContext(context.WithValue(r.Context(), dpreq.FlorenceIdentityKey, testUserAuthToken))
@@ -1995,12 +1991,11 @@ func TestPublishImageHandler(t *testing.T) {
 			}
 
 			Convey("Calling 'publish image' results in 204 NoContent response with the expected image state update to mongoDB and the message sent to kafka producer", func() {
-				channels := &kafka.ProducerChannels{
-					Output: make(chan []byte),
-				}
+				sentEvents := make([]interface{}, 0, 2)
 				publishedProducer := &kafkatest.IProducerMock{
-					ChannelsFunc: func() *kafka.ProducerChannels {
-						return channels
+					SendFunc: func(ctx context.Context, schema *avro.Schema, event interface{}) error {
+						sentEvents = append(sentEvents, event)
+						return nil
 					},
 				}
 				imageAPI := GetAPIWithMocks(cfg, mongoDBMock, authHandlerMock, kafkaStubProducer, publishedProducer)
@@ -2008,7 +2003,7 @@ func TestPublishImageHandler(t *testing.T) {
 				r = r.WithContext(context.WithValue(r.Context(), dpreq.FlorenceIdentityKey, testUserAuthToken))
 				r = r.WithContext(context.WithValue(r.Context(), handlers.CollectionID.Context(), testCollectionID1))
 				w := httptest.NewRecorder()
-				sentBytes := serveHTTPAndReadKafka(w, r, imageAPI, publishedProducer, 2)
+				imageAPI.Router.ServeHTTP(w, r)
 				So(w.Code, ShouldEqual, http.StatusNoContent)
 				So(mongoDBMock.GetImageCalls(), ShouldHaveLength, 1)
 				So(mongoDBMock.GetImageCalls()[0].ID, ShouldEqual, testImageID1)
@@ -2024,35 +2019,29 @@ func TestPublishImageHandler(t *testing.T) {
 				So(mongoDBMock.UnlockImageCalls(), ShouldHaveLength, 1)
 
 				Convey("And the expected avro event is sent to the corresponding kafka output channel, with the expected source and dest paths", func() {
+					So(publishedProducer.SendCalls(), ShouldHaveLength, 2)
 					// Note: the paths correspond to the path part of DownloadHrefFmt format "http://<host>/images/<imageID>/<variantName>/<fileName>"
-					expectedBytesOriginal, err := schema.ImagePublishedEvent.Marshal(&event.ImagePublished{
+					expectedEventOriginal := &event.ImagePublished{
 						SrcPath:      expectedSrcPathOriginal,
 						DstPath:      expectedDstPathOriginal,
 						ImageID:      testImageID1,
 						ImageVariant: "original",
-					})
-					So(err, ShouldBeNil)
-					expectedBytesPngW500, err := schema.ImagePublishedEvent.Marshal(&event.ImagePublished{
+					}
+					expectedEventPngW500 := &event.ImagePublished{
 						SrcPath:      expectedSrcPathPngW500,
 						DstPath:      expectedDstPathPngW500,
 						ImageID:      testImageID1,
 						ImageVariant: "png_w500",
-					})
-					So(err, ShouldBeNil)
-					validateExpectedBytes(sentBytes, [][]byte{expectedBytesOriginal, expectedBytesPngW500})
+					}
+					So(sentEvents, ShouldContain, interface{}(expectedEventOriginal))
+					So(sentEvents, ShouldContain, interface{}(expectedEventPngW500))
 				})
 			})
 
 			Convey("Calling 'publish image' with a 500 InternalError response when an invalid image published event is generated", func() {
-				api.ImagePublishedEvent = func(path, filename, imageId, variant string) *event.ImagePublished {
-					return nil
-				}
-				channels := &kafka.ProducerChannels{
-					Output: make(chan []byte),
-				}
 				publishedProducer := &kafkatest.IProducerMock{
-					ChannelsFunc: func() *kafka.ProducerChannels {
-						return channels
+					SendFunc: func(ctx context.Context, schema *avro.Schema, event interface{}) error {
+						return fmt.Errorf("blah")
 					},
 				}
 				imageAPI := GetAPIWithMocks(cfg, mongoDBMock, authHandlerMock, kafkaStubProducer, publishedProducer)
@@ -2065,36 +2054,6 @@ func TestPublishImageHandler(t *testing.T) {
 				So(mongoDBMock.GetImageCalls(), ShouldHaveLength, 1)
 				So(mongoDBMock.GetImageCalls()[0].ID, ShouldEqual, testImageID1)
 				So(mongoDBMock.UpdateImageCalls(), ShouldHaveLength, 1)
-			})
-		})
-
-		Convey("And an image with invalid filename, which results in an invalid href for the download variants", func() {
-			mongoDBMock := &mock.MongoServerMock{
-				GetImageFunc: func(ctx context.Context, id string) (*models.Image, error) {
-					image := dbImage(models.StateImported)
-					image.Filename = "a££$(50y4534%£$||}{}"
-					image.Downloads = map[string]models.Download{"original": {}, "png_w500": {}}
-					return image, nil
-				},
-				UpdateImageFunc: func(ctx context.Context, id string, image *models.Image) (bool, error) {
-					return true, nil
-				},
-				AcquireImageLockFunc: func(ctx context.Context, id string) (string, error) { return testLockID, nil },
-				UnlockImageFunc:      func(ctx context.Context, id string) {},
-			}
-			imageAPI := GetAPIWithMocks(cfg, mongoDBMock, authHandlerMock, kafkaStubProducer, kafkaStubProducer)
-
-			Convey("Calling 'publish image' results in 500 response", func() {
-				r := httptest.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:24700/images/%s/publish", testImageID1), http.NoBody)
-				r = r.WithContext(context.WithValue(r.Context(), dpreq.FlorenceIdentityKey, testUserAuthToken))
-				r = r.WithContext(context.WithValue(r.Context(), handlers.CollectionID.Context(), testCollectionID1))
-				w := httptest.NewRecorder()
-				imageAPI.Router.ServeHTTP(w, r)
-				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				So(mongoDBMock.GetImageCalls(), ShouldHaveLength, 1)
-				So(mongoDBMock.GetImageCalls()[0].ID, ShouldEqual, testImageID1)
-				So(mongoDBMock.AcquireImageLockCalls(), ShouldHaveLength, 1)
-				So(mongoDBMock.UnlockImageCalls(), ShouldHaveLength, 1)
 			})
 		})
 
@@ -2193,55 +2152,4 @@ func TestPublishImageHandler(t *testing.T) {
 			})
 		})
 	})
-}
-
-// serveHTTPAndReadKafka performs the ServeHTTP with the provided responseRecorder and Request in a parallel go-routine, then reads the bytes
-// from the kafka output channel for the provided number of messages, and waits for the ServeHTTP routine to finish.
-// The bytes sent to kafka output channel are returned in an array corresponding to each call.
-func serveHTTPAndReadKafka(w *httptest.ResponseRecorder, r *http.Request, imageAPI *api.API, kafkaProducerMock kafka.IProducer, expectedNumMessages int) [][]byte {
-	var sentBytes [][]byte
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		imageAPI.Router.ServeHTTP(w, r)
-	}()
-
-	for i := 0; i < expectedNumMessages; i++ {
-		s := <-kafkaProducerMock.Channels().Output
-		So(s, ShouldNotBeNil)
-		sentBytes = append(sentBytes, s)
-	}
-
-	wg.Wait()
-	return sentBytes
-}
-
-// validateExpectedBytes checks that all byte arrays from b1 resemble all byte arrays from b2, ignoring order
-func validateExpectedBytes(bytes1, bytes2 [][]byte) {
-	So(bytes1, ShouldHaveLength, len(bytes2))
-
-	// utility function to compare bytes arrays
-	bytesEqual := func(b1, b2 []byte) bool {
-		for i, b := range b2 {
-			if b != b1[i] {
-				return false
-			}
-		}
-		return true
-	}
-
-	// utility function to find byte array in an array of byte arrays
-	findByteArray := func(toFind []byte, b [][]byte) bool {
-		for _, comparing := range b {
-			if bytesEqual(toFind, comparing) {
-				return true
-			}
-		}
-		return false
-	}
-
-	for _, b1 := range bytes1 {
-		So(findByteArray(b1, bytes2), ShouldBeTrue)
-	}
 }

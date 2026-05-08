@@ -10,6 +10,7 @@ import (
 	"github.com/ONSdigital/dp-image-api/apierrors"
 	"github.com/ONSdigital/dp-image-api/event"
 	"github.com/ONSdigital/dp-image-api/models"
+	"github.com/ONSdigital/dp-image-api/schema"
 	"github.com/ONSdigital/dp-net/v2/links"
 	"github.com/ONSdigital/dp-net/v3/handlers"
 	dpreq "github.com/ONSdigital/dp-net/v3/request"
@@ -21,25 +22,6 @@ import (
 // NewID returns a new UUID
 var NewID = func() string {
 	return uuid.New().String()
-}
-
-// ImageUploadedEvent returns an ImageUploaded event for the provided image ID and upload path
-var ImageUploadedEvent = func(imageID, uploadPath, filename string) *event.ImageUploaded {
-	return &event.ImageUploaded{
-		ImageID:  imageID,
-		Path:     uploadPath,
-		Filename: filename,
-	}
-}
-
-// ImagePublishedEvent returns an ImagePublished event for the provided path
-var ImagePublishedEvent = func(filepath, filename, imageID, variant string) *event.ImagePublished {
-	return &event.ImagePublished{
-		SrcPath:      filepath,
-		DstPath:      path.Join(filepath, filename),
-		ImageID:      imageID,
-		ImageVariant: variant,
-	}
 }
 
 // GetImagesHandler is a handler that gets all images in a collection from MongoDB
@@ -263,8 +245,12 @@ func (api *API) doUpdateImage(w http.ResponseWriter, req *http.Request, id strin
 	if image.State == models.StateUploaded.String() {
 		uploadS3Path := path.Base(image.Upload.Path)
 		log.Info(ctx, "sending image uploaded message", logdata)
-		uploadedEvent := ImageUploadedEvent(id, uploadS3Path, image.Filename)
-		if uploadErr := api.uploadProducer.ImageUploaded(uploadedEvent); uploadErr != nil {
+		uploadedEvent := &event.ImageUploaded{
+			ImageID:  id,
+			Path:     uploadS3Path,
+			Filename: image.Filename,
+		}
+		if uploadErr := api.uploadProducer.Send(ctx, schema.ImageUploadedEvent, uploadedEvent); uploadErr != nil {
 			handleError(ctx, w, uploadErr, logdata)
 			return nil
 		}
@@ -636,7 +622,7 @@ func (api *API) PublishImageHandler(w http.ResponseWriter, req *http.Request) {
 	// Send 'image published' kafka messages corresponding to all the download variants
 	log.Info(ctx, "sending image published messages", logdata)
 	for _, e := range events {
-		if err := api.publishedProducer.ImagePublished(e); err != nil {
+		if err := api.publishedProducer.Send(ctx, schema.ImagePublishedEvent, e); err != nil {
 			handleError(ctx, w, err, logdata)
 			return
 		}
@@ -651,7 +637,12 @@ func generateImagePublishEvents(image *models.Image) (events []*event.ImagePubli
 	for i := range image.Downloads {
 		variant := image.Downloads[i]
 		srcPath := path.Join("images", image.ID, variant.ID)
-		events = append(events, ImagePublishedEvent(srcPath, image.Filename, image.ID, variant.ID))
+		events = append(events, &event.ImagePublished{
+			SrcPath:      srcPath,
+			DstPath:      path.Join(srcPath, image.Filename),
+			ImageID:      image.ID,
+			ImageVariant: variant.ID,
+		})
 	}
 	return events
 }
