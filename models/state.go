@@ -18,6 +18,7 @@ const (
 	StateFailedPublish
 )
 
+// nolint:goconst // not really a reused constant
 var stateValues = []string{"created", "uploaded", "importing", "imported", "published", "completed", "deleted", "failed_import", "failed_publish"}
 
 // String returns the string representation of a state

@@ -24,13 +24,21 @@ var NewID = func() string {
 	return uuid.New().String()
 }
 
+const (
+	labelRequestID       = "request-id"
+	labelImage           = "image"
+	labelImageID         = "image-id"
+	labelDownloadVariant = "download-variant"
+	labelLink            = "link"
+)
+
 // GetImagesHandler is a handler that gets all images in a collection from MongoDB
 func (api *API) GetImagesHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	hColID := ctx.Value(handlers.CollectionID.Context())
 	logdata := log.Data{
 		handlers.CollectionID.Header(): hColID,
-		"request-id":                   ctx.Value(dpreq.RequestIdKey),
+		labelRequestID:                 ctx.Value(dpreq.RequestIdKey),
 	}
 
 	// get collection_id query parameter (optional)
@@ -76,7 +84,7 @@ func (api *API) CreateImageHandler(w http.ResponseWriter, req *http.Request) {
 	hColID := ctx.Value(handlers.CollectionID.Context())
 	logdata := log.Data{
 		handlers.CollectionID.Header(): hColID,
-		"request-id":                   ctx.Value(dpreq.RequestIdKey),
+		labelRequestID:                 ctx.Value(dpreq.RequestIdKey),
 	}
 
 	newImageRequest := &models.Image{}
@@ -117,7 +125,7 @@ func (api *API) CreateImageHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Info(ctx, "storing new image", log.Data{"image": newImage})
+	log.Info(ctx, "storing new image", log.Data{labelImage: newImage})
 
 	// Upsert image in MongoDB
 	if err := api.mongoDB.UpsertImage(req.Context(), newImage.ID, &newImage); err != nil {
@@ -140,8 +148,8 @@ func (api *API) GetImageHandler(w http.ResponseWriter, req *http.Request) {
 	hColID := ctx.Value(handlers.CollectionID.Context())
 	logdata := log.Data{
 		handlers.CollectionID.Header(): hColID,
-		"request-id":                   ctx.Value(dpreq.RequestIdKey),
-		"image-id":                     id,
+		labelRequestID:                 ctx.Value(dpreq.RequestIdKey),
+		labelImageID:                   id,
 	}
 
 	// get image from mongoDB by id
@@ -176,8 +184,8 @@ func (api *API) UpdateImageHandler(w http.ResponseWriter, req *http.Request) {
 	hColID := ctx.Value(handlers.CollectionID.Context())
 	logdata := log.Data{
 		handlers.CollectionID.Header(): hColID,
-		"request-id":                   ctx.Value(dpreq.RequestIdKey),
-		"image-id":                     id,
+		labelRequestID:                 ctx.Value(dpreq.RequestIdKey),
+		labelImageID:                   id,
 	}
 
 	// Unmarshal image from body and validate it
@@ -206,7 +214,7 @@ func (api *API) doUpdateImage(w http.ResponseWriter, req *http.Request, id strin
 		handleError(ctx, w, err, logdata)
 		return nil
 	}
-	log.Info(ctx, "updating image", log.Data{"image": image})
+	log.Info(ctx, "updating image", log.Data{labelImage: image})
 
 	// Validate a possible mismatch of image id, if provided in image body
 	if image.ID != "" && image.ID != id {
@@ -273,8 +281,8 @@ func (api *API) GetDownloadsHandler(w http.ResponseWriter, req *http.Request) {
 	hColID := ctx.Value(handlers.CollectionID.Context())
 	logdata := log.Data{
 		handlers.CollectionID.Header(): hColID,
-		"request-id":                   ctx.Value(dpreq.RequestIdKey),
-		"image-id":                     id,
+		labelRequestID:                 ctx.Value(dpreq.RequestIdKey),
+		labelImageID:                   id,
 	}
 
 	// get image from mongoDB by id
@@ -322,8 +330,8 @@ func (api *API) CreateDownloadHandler(w http.ResponseWriter, req *http.Request) 
 	hColID := ctx.Value(handlers.CollectionID.Context())
 	logdata := log.Data{
 		handlers.CollectionID.Header(): hColID,
-		"request-id":                   ctx.Value(dpreq.RequestIdKey),
-		"image-id":                     id,
+		labelRequestID:                 ctx.Value(dpreq.RequestIdKey),
+		labelImageID:                   id,
 	}
 
 	// Unmarshal image from body and validate it
@@ -426,9 +434,9 @@ func (api *API) GetDownloadHandler(w http.ResponseWriter, req *http.Request) {
 	hColID := ctx.Value(handlers.CollectionID.Context())
 	logdata := log.Data{
 		handlers.CollectionID.Header(): hColID,
-		"request-id":                   ctx.Value(dpreq.RequestIdKey),
-		"image-id":                     id,
-		"download-variant":             variant,
+		labelRequestID:                 ctx.Value(dpreq.RequestIdKey),
+		labelImageID:                   id,
+		labelDownloadVariant:           variant,
 	}
 
 	// get image from mongoDB by id
@@ -470,9 +478,9 @@ func (api *API) UpdateDownloadHandler(w http.ResponseWriter, req *http.Request) 
 	hColID := ctx.Value(handlers.CollectionID.Context())
 	logdata := log.Data{
 		handlers.CollectionID.Header(): hColID,
-		"request-id":                   ctx.Value(dpreq.RequestIdKey),
-		"image-id":                     id,
-		"download-variant":             variant,
+		labelRequestID:                 ctx.Value(dpreq.RequestIdKey),
+		labelImageID:                   id,
+		labelDownloadVariant:           variant,
 	}
 
 	// Unmarshal download variant from body and validate it
@@ -567,8 +575,8 @@ func (api *API) PublishImageHandler(w http.ResponseWriter, req *http.Request) {
 	hColID := ctx.Value(handlers.CollectionID.Context())
 	logdata := log.Data{
 		handlers.CollectionID.Header(): hColID,
-		"request-id":                   ctx.Value(dpreq.RequestIdKey),
-		"image-id":                     id,
+		labelRequestID:                 ctx.Value(dpreq.RequestIdKey),
+		labelImageID:                   id,
 	}
 
 	imageUpdate := &models.Image{State: models.StatePublished.String()}
@@ -663,13 +671,13 @@ func rewriteImageLinks(ctx context.Context, builder links.Builder, image *models
 
 	image.Links.Self, err = builder.BuildLink(image.Links.Self)
 	if err != nil {
-		log.Error(ctx, "could not build self link", err, log.Data{"link": image.Links.Self})
+		log.Error(ctx, "could not build self link", err, log.Data{labelLink: image.Links.Self})
 		return err
 	}
 
 	image.Links.Downloads, err = builder.BuildLink(image.Links.Downloads)
 	if err != nil {
-		log.Error(ctx, "could not build download link", err, log.Data{"link": image.Links.Downloads})
+		log.Error(ctx, "could not build download link", err, log.Data{labelLink: image.Links.Downloads})
 		return err
 	}
 
@@ -682,13 +690,13 @@ func rewriteDownloadLinks(ctx context.Context, builder links.Builder, download m
 
 	download.Links.Self, err = builder.BuildLink(download.Links.Self)
 	if err != nil {
-		log.Error(ctx, "could not build self link", err, log.Data{"link": download.Links.Self})
+		log.Error(ctx, "could not build self link", err, log.Data{labelLink: download.Links.Self})
 		return err
 	}
 
 	download.Links.Image, err = builder.BuildLink(download.Links.Image)
 	if err != nil {
-		log.Error(ctx, "could not build image link", err, log.Data{"link": download.Links.Image})
+		log.Error(ctx, "could not build image link", err, log.Data{labelLink: download.Links.Image})
 		return err
 	}
 

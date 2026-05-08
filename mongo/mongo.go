@@ -18,6 +18,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const (
+	labelId = "id"
+)
+
 type Mongo struct {
 	mongodriver.MongoDriverConfig
 
@@ -91,7 +95,7 @@ func (m *Mongo) GetImages(ctx context.Context, collectionID string) ([]models.Im
 
 // GetImage retrieves an image document by its ID
 func (m *Mongo) GetImage(ctx context.Context, id string) (*models.Image, error) {
-	log.Info(ctx, "getting image by ID", log.Data{"id": id})
+	log.Info(ctx, "getting image by ID", log.Data{labelId: id})
 
 	var image models.Image
 	err := m.connection.Collection(m.ActualCollectionName(config.ImagesCollection)).FindOne(ctx, bson.M{"_id": id}, &image)
@@ -107,7 +111,7 @@ func (m *Mongo) GetImage(ctx context.Context, id string) (*models.Image, error) 
 
 // UpdateImage updates an existing image document
 func (m *Mongo) UpdateImage(ctx context.Context, id string, image *models.Image) (bool, error) {
-	log.Info(ctx, "updating image", log.Data{"id": id})
+	log.Info(ctx, "updating image", log.Data{labelId: id})
 
 	updates := createImageUpdateQuery(ctx, id, image)
 	if len(updates) == 0 {
@@ -115,6 +119,7 @@ func (m *Mongo) UpdateImage(ctx context.Context, id string, image *models.Image)
 		return false, nil
 	}
 
+	//nolint:goconst // mongo keyword, clearer without const
 	update := bson.M{"$set": updates, "$currentDate": bson.M{"last_updated": true}}
 	if _, err := m.connection.Collection(m.ActualCollectionName(config.ImagesCollection)).Must().UpdateById(ctx, id, update); err != nil {
 		if errors.Is(err, mongodriver.ErrNoDocumentFound) {
@@ -219,10 +224,10 @@ func createImageUpdateQuery(ctx context.Context, id string, image *models.Image)
 
 // UpsertImage adds or overides an existing image document
 func (m *Mongo) UpsertImage(ctx context.Context, id string, image *models.Image) (err error) {
-	log.Info(ctx, "upserting image", log.Data{"id": id})
+	log.Info(ctx, "upserting image", log.Data{labelId: id})
 
 	update := bson.M{
-		"$set": image,
+		"$set": image, //nolint:goconst // mongo keyword, clearer without const
 		"$setOnInsert": bson.M{
 			"last_updated": time.Now(),
 		},

@@ -41,12 +41,16 @@ const (
 	testCollectionID1      = "1234"
 	testVariantOriginal    = "original"
 	testVariantAlternative = "bw1024"
+	testVariantPng         = "png_w500"
 	testUploadFilename     = "newimage.png"
 	testUploadPath         = "s3://images/" + testUploadFilename
 	testLockID             = "image-myID-123456789"
 	testDownloadType       = "originally uploaded file"
 	testPrivateHref        = "http://download.ons.gov.uk/images/imageImageID2/original/some-image-name"
 	testFilename           = "some-image-name"
+	testLicence            = "Open Government Licence v3.0"
+	testLicenceHref        = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+	testType               = "chart"
 	contentTypeKey         = "Content-Type"
 	contentTypeJSON        = "application/json; charset=utf-8"
 	downloadServiceURL     = "http://download-web.ons.example"
@@ -207,14 +211,14 @@ func dbImageWithID(state models.State, id string) *models.Image {
 		CollectionID: testCollectionID1,
 		Filename:     "some-image-name",
 		License: &models.License{
-			Title: "Open Government Licence v3.0",
-			Href:  "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+			Title: testLicence,
+			Href:  testLicenceHref,
 		},
 		Links: &models.ImageLinks{
 			Self:      fmt.Sprintf("http://example.com/images/%s", id),
 			Downloads: fmt.Sprintf("http://example.com/images/%s/downloads", id),
 		},
-		Type:  "chart",
+		Type:  testType,
 		State: state.String(),
 	}
 }
@@ -275,16 +279,16 @@ func dbFullImage(state models.State) *models.Image {
 	return &models.Image{
 		ID:           testImageID2,
 		CollectionID: testCollectionID1,
-		Filename:     "some-image-name",
+		Filename:     testFilename,
 		License: &models.License{
-			Title: "Open Government Licence v3.0",
-			Href:  "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+			Title: testLicence,
+			Href:  testLicenceHref,
 		},
 		Links: &models.ImageLinks{
 			Self:      fmt.Sprintf("http://example.com/images/%s", testImageID2),
 			Downloads: fmt.Sprintf("http://example.com/images/%s/downloads", testImageID2),
 		},
-		Type:  "chart",
+		Type:  testType,
 		State: state.String(),
 		Upload: &models.Upload{
 			Path: testUploadPath,
@@ -306,16 +310,16 @@ func apiFullImage(state models.State) *models.Image {
 	return &models.Image{
 		ID:           testImageID2,
 		CollectionID: testCollectionID1,
-		Filename:     "some-image-name",
+		Filename:     testFilename,
 		License: &models.License{
-			Title: "Open Government Licence v3.0",
-			Href:  "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+			Title: testLicence,
+			Href:  testLicenceHref,
 		},
 		Links: &models.ImageLinks{
 			Self:      fmt.Sprintf("http://example.com/images/%s", testImageID2),
 			Downloads: fmt.Sprintf("http://example.com/images/%s/downloads", testImageID2),
 		},
-		Type:  "chart",
+		Type:  testType,
 		State: state.String(),
 		Upload: &models.Upload{
 			Path: testUploadPath,
@@ -342,12 +346,12 @@ func importedImage() *models.Image {
 func dbCreatedImageNoCollectionID() *models.Image {
 	return &models.Image{
 		ID:       testImageID1,
-		Filename: "some-image-name",
+		Filename: testFilename,
 		License: &models.License{
-			Title: "Open Government Licence v3.0",
-			Href:  "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+			Title: testLicence,
+			Href:  testLicenceHref,
 		},
-		Type:  "chart",
+		Type:  testType,
 		State: models.StateCreated.String(),
 	}
 }
@@ -649,7 +653,7 @@ func TestCreateImageHandler(t *testing.T) {
 
 		Convey("When a valid new image is posted", func() {
 			r := httptest.NewRequest(http.MethodPost, "http://localhost:24700/images", bytes.NewBufferString(
-				fmt.Sprintf(newImagePayloadFmt, testCollectionID1, "some-image-name")))
+				fmt.Sprintf(newImagePayloadFmt, testCollectionID1, testFilename)))
 			r = r.WithContext(context.WithValue(r.Context(), dpreq.FlorenceIdentityKey, testUserAuthToken))
 			w := httptest.NewRecorder()
 			imageAPI.Router.ServeHTTP(w, r)
@@ -747,7 +751,7 @@ func TestCreateImageHandler(t *testing.T) {
 
 		Convey("When a new image is posted a 500 InternalServerError status code is returned", func() {
 			r := httptest.NewRequest(http.MethodPost, "http://localhost:24700/images", bytes.NewBufferString(
-				fmt.Sprintf(newImagePayloadFmt, testCollectionID1, "some-image-name")))
+				fmt.Sprintf(newImagePayloadFmt, testCollectionID1, testFilename)))
 			r = r.WithContext(context.WithValue(r.Context(), dpreq.FlorenceIdentityKey, testUserAuthToken))
 			w := httptest.NewRecorder()
 			imageAPI.Router.ServeHTTP(w, r)
@@ -1979,8 +1983,8 @@ func TestPublishImageHandler(t *testing.T) {
 			mongoDBMock := &mock.MongoServerMock{
 				GetImageFunc: func(ctx context.Context, id string) (*models.Image, error) {
 					image := dbImage(models.StateImported)
-					image.Filename = "some-image-name"
-					image.Downloads = map[string]models.Download{"original": {ID: "original", Href: expectedSrcPathOriginal}, "png_w500": {ID: "png_w500", Href: expectedSrcPathPngW500}}
+					image.Filename = testFilename
+					image.Downloads = map[string]models.Download{testVariantOriginal: {ID: testVariantOriginal, Href: expectedSrcPathOriginal}, testVariantPng: {ID: testVariantPng, Href: expectedSrcPathPngW500}}
 					return image, nil
 				},
 				UpdateImageFunc: func(ctx context.Context, id string, image *models.Image) (bool, error) {
@@ -2011,10 +2015,10 @@ func TestPublishImageHandler(t *testing.T) {
 				So(mongoDBMock.UpdateImageCalls()[0].ID, ShouldEqual, testImageID1)
 				So(mongoDBMock.UpdateImageCalls()[0].Image.State, ShouldEqual, models.StatePublished.String())
 				So(mongoDBMock.UpdateImageCalls()[0].Image.Downloads, ShouldHaveLength, 2)
-				So(mongoDBMock.UpdateImageCalls()[0].Image.Downloads["original"].State, ShouldEqual, models.StateDownloadPublished.String())
-				So(mongoDBMock.UpdateImageCalls()[0].Image.Downloads["original"].Href, ShouldEqual, downloadServiceURL+"/images/"+testImageID1+"/original/some-image-name")
-				So(mongoDBMock.UpdateImageCalls()[0].Image.Downloads["png_w500"].State, ShouldEqual, models.StateDownloadPublished.String())
-				So(mongoDBMock.UpdateImageCalls()[0].Image.Downloads["png_w500"].Href, ShouldEqual, downloadServiceURL+"/images/"+testImageID1+"/png_w500/some-image-name")
+				So(mongoDBMock.UpdateImageCalls()[0].Image.Downloads[testVariantOriginal].State, ShouldEqual, models.StateDownloadPublished.String())
+				So(mongoDBMock.UpdateImageCalls()[0].Image.Downloads[testVariantOriginal].Href, ShouldEqual, downloadServiceURL+"/images/"+testImageID1+"/original/some-image-name")
+				So(mongoDBMock.UpdateImageCalls()[0].Image.Downloads[testVariantPng].State, ShouldEqual, models.StateDownloadPublished.String())
+				So(mongoDBMock.UpdateImageCalls()[0].Image.Downloads[testVariantPng].Href, ShouldEqual, downloadServiceURL+"/images/"+testImageID1+"/png_w500/some-image-name")
 				So(mongoDBMock.AcquireImageLockCalls(), ShouldHaveLength, 1)
 				So(mongoDBMock.UnlockImageCalls(), ShouldHaveLength, 1)
 
@@ -2025,13 +2029,13 @@ func TestPublishImageHandler(t *testing.T) {
 						SrcPath:      expectedSrcPathOriginal,
 						DstPath:      expectedDstPathOriginal,
 						ImageID:      testImageID1,
-						ImageVariant: "original",
+						ImageVariant: testVariantOriginal,
 					}
 					expectedEventPngW500 := &event.ImagePublished{
 						SrcPath:      expectedSrcPathPngW500,
 						DstPath:      expectedDstPathPngW500,
 						ImageID:      testImageID1,
-						ImageVariant: "png_w500",
+						ImageVariant: testVariantPng,
 					}
 					So(sentEvents, ShouldContain, interface{}(expectedEventOriginal))
 					So(sentEvents, ShouldContain, interface{}(expectedEventPngW500))

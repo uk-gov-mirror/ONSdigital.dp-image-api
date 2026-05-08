@@ -41,6 +41,7 @@ var cfg *Config
 const (
 	ImagesCollection     = "ImagesCollection"
 	ImagesLockCollection = "ImagesLockCollection"
+	imagesDB             = "images"
 )
 
 // Get returns the default config with any modifications through environment
@@ -71,8 +72,8 @@ func Get() (*Config, error) {
 			ClusterEndpoint:               "localhost:27017",
 			Username:                      "",
 			Password:                      "",
-			Database:                      "images",
-			Collections:                   map[string]string{ImagesCollection: "images", ImagesLockCollection: "images_locks"},
+			Database:                      imagesDB,
+			Collections:                   map[string]string{ImagesCollection: imagesDB, ImagesLockCollection: "images_locks"},
 			ReplicaSet:                    "",
 			IsStrongReadConcernEnabled:    false,
 			IsWriteConcernMajorityEnabled: true,

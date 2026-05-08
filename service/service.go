@@ -17,6 +17,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	labelTopic = "topic"
+)
+
 // Service contains all the configs, server and clients to run the Image API
 type Service struct {
 	config                 *config.Config
@@ -207,12 +211,12 @@ func registerCheckers(ctx context.Context,
 	if cfg.IsPublishing {
 		if err = hc.AddCheck("Uploaded Kafka Producer", uploadedKafkaProducer.Checker); err != nil {
 			hasErrors = true
-			log.Error(ctx, "error adding check for uploaded kafka producer", err, log.Data{"topic": cfg.ImageUploadedTopic})
+			log.Error(ctx, "error adding check for uploaded kafka producer", err, log.Data{labelTopic: cfg.ImageUploadedTopic})
 		}
 
 		if err = hc.AddCheck("Published Kafka Producer", publishedKafkaProducer.Checker); err != nil {
 			hasErrors = true
-			log.Error(ctx, "error adding check for published kafka producer", err, log.Data{"topic": cfg.StaticFilePublishedTopic})
+			log.Error(ctx, "error adding check for published kafka producer", err, log.Data{labelTopic: cfg.StaticFilePublishedTopic})
 		}
 
 		if err = hc.AddCheck("Zebedee", zebedeeClient.Checker); err != nil {

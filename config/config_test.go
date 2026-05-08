@@ -1,15 +1,16 @@
-package config
+package config_test
 
 import (
 	"testing"
 	"time"
 
+	"github.com/ONSdigital/dp-image-api/config"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestConfig(t *testing.T) {
 	Convey("Given an environment with no environment variables set", t, func() {
-		cfg, err := Get()
+		cfg, err := config.Get()
 
 		Convey("When the config values are retrieved", func() {
 			Convey("Then there should be no error returned", func() {
@@ -30,7 +31,7 @@ func TestConfig(t *testing.T) {
 				So(cfg.HealthCheckCriticalTimeout, ShouldEqual, 90*time.Second)
 				So(cfg.ClusterEndpoint, ShouldEqual, "localhost:27017")
 				So(cfg.Database, ShouldEqual, "images")
-				So(cfg.Collections, ShouldResemble, map[string]string{ImagesCollection: "images", ImagesLockCollection: "images_locks"})
+				So(cfg.Collections, ShouldResemble, map[string]string{config.ImagesCollection: "images", config.ImagesLockCollection: "images_locks"})
 				So(cfg.Username, ShouldEqual, "")
 				So(cfg.Password, ShouldEqual, "")
 				So(cfg.ReplicaSet, ShouldEqual, "")
@@ -46,7 +47,7 @@ func TestConfig(t *testing.T) {
 				So(cfg.EnableURLRewriting, ShouldEqual, false)
 			})
 			Convey("Then a second call to config should return the same config", func() {
-				newCfg, newErr := Get()
+				newCfg, newErr := config.Get()
 				So(newErr, ShouldBeNil)
 				So(newCfg, ShouldResemble, cfg)
 			})

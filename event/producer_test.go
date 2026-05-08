@@ -9,6 +9,15 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+const (
+	testImageId      = "myImage"
+	testPath         = "myPath"
+	testFilename     = "filename.png"
+	testSrcPath      = "path/private/image.png"
+	testDstPath      = "path/public/img.png"
+	testImageVariant = "original"
+)
+
 var errMarshal = errors.New("Marshal error")
 
 func TestAvroProducer(t *testing.T) {
@@ -55,9 +64,9 @@ func TestAvroProducer(t *testing.T) {
 
 		Convey("When ImageUploaded is called on the event producer", func() {
 			uploadedEvent := &event.ImageUploaded{
-				ImageID:  "myImage",
-				Path:     "myPath",
-				Filename: "filename.png",
+				ImageID:  testImageId,
+				Path:     testPath,
+				Filename: testFilename,
 			}
 			err := eventProducer.ImageUploaded(uploadedEvent)
 
@@ -72,10 +81,10 @@ func TestAvroProducer(t *testing.T) {
 
 		Convey("When ImagePublished is called on the event producer", func() {
 			publishedEvent := &event.ImagePublished{
-				SrcPath:      "path/private/image.png",
-				DstPath:      "path/public/img.png",
+				SrcPath:      testSrcPath,
+				DstPath:      testDstPath,
 				ImageID:      "123",
-				ImageVariant: "original",
+				ImageVariant: testImageVariant,
 			}
 			err := eventProducer.ImagePublished(publishedEvent)
 
@@ -102,9 +111,9 @@ func TestAvroProducer(t *testing.T) {
 
 		Convey("When ImageUploaded is called on the event producer", func() {
 			uploadedEvent := &event.ImageUploaded{
-				ImageID:  "myImage",
-				Path:     "myPath",
-				Filename: "filename.png",
+				ImageID:  testImageId,
+				Path:     testPath,
+				Filename: testFilename,
 			}
 			err := eventProducer.ImageUploaded(uploadedEvent)
 
@@ -115,10 +124,10 @@ func TestAvroProducer(t *testing.T) {
 
 		Convey("When ImagePublished is called on the event producer", func() {
 			publishedEvent := &event.ImagePublished{
-				SrcPath:      "path/private/image.png",
-				DstPath:      "path/public/img.png",
+				SrcPath:      testSrcPath,
+				DstPath:      testDstPath,
 				ImageID:      "123",
-				ImageVariant: "original",
+				ImageVariant: testImageVariant,
 			}
 			err := eventProducer.ImagePublished(publishedEvent)
 

@@ -13,7 +13,11 @@ import (
 // Constants for testing
 const (
 	testVariantOriginal = "original"
+	testVariant1        = "var1"
+	testVariant2        = "var2"
 	testDownloadType    = "originally uploaded file"
+	testStateWrong      = "wrong"
+	testStateUploaded   = "uploaded"
 )
 
 var (
@@ -25,9 +29,9 @@ func TestImageAllDownloadsOfState(t *testing.T) {
 	Convey("Given an image with all download variants in completed state", t, func() {
 		image := models.Image{
 			Downloads: map[string]models.Download{
-				"original": {State: models.StateDownloadCompleted.String()},
-				"var1":     {State: models.StateDownloadCompleted.String()},
-				"var2":     {State: models.StateDownloadCompleted.String()},
+				testVariantOriginal: {State: models.StateDownloadCompleted.String()},
+				testVariant1:        {State: models.StateDownloadCompleted.String()},
+				testVariant2:        {State: models.StateDownloadCompleted.String()},
 			},
 		}
 		Convey("Then AllDownloadsOfStateShould return expected values", func() {
@@ -39,9 +43,9 @@ func TestImageAllDownloadsOfState(t *testing.T) {
 	Convey("Given an image with all download variants in completed state except the original", t, func() {
 		image := models.Image{
 			Downloads: map[string]models.Download{
-				"original": {State: models.StateDownloadPublished.String()},
-				"var1":     {State: models.StateDownloadCompleted.String()},
-				"var2":     {State: models.StateDownloadCompleted.String()},
+				testVariantOriginal: {State: models.StateDownloadPublished.String()},
+				testVariant1:        {State: models.StateDownloadCompleted.String()},
+				testVariant2:        {State: models.StateDownloadCompleted.String()},
 			},
 		}
 		Convey("Then AllDownloadsOfStateShould return expected values", func() {
@@ -63,9 +67,9 @@ func TestImageAnyDownloadsOfState(t *testing.T) {
 	Convey("Given an image with all download variants in completed state", t, func() {
 		image := models.Image{
 			Downloads: map[string]models.Download{
-				"original": {State: models.StateDownloadCompleted.String()},
-				"var1":     {State: models.StateDownloadCompleted.String()},
-				"var2":     {State: models.StateDownloadCompleted.String()},
+				testVariantOriginal: {State: models.StateDownloadCompleted.String()},
+				testVariant1:        {State: models.StateDownloadCompleted.String()},
+				testVariant2:        {State: models.StateDownloadCompleted.String()},
 			},
 		}
 		Convey("Then AnyDownloadsOfStateShould return expected values", func() {
@@ -77,9 +81,9 @@ func TestImageAnyDownloadsOfState(t *testing.T) {
 	Convey("Given an image with all download variants in completed state except the original", t, func() {
 		image := models.Image{
 			Downloads: map[string]models.Download{
-				"original": {State: models.StateDownloadPublished.String()},
-				"var1":     {State: models.StateDownloadCompleted.String()},
-				"var2":     {State: models.StateDownloadCompleted.String()},
+				testVariantOriginal: {State: models.StateDownloadPublished.String()},
+				testVariant1:        {State: models.StateDownloadCompleted.String()},
+				testVariant2:        {State: models.StateDownloadCompleted.String()},
 			},
 		}
 		Convey("Then AnyDownloadsOfStateShould return expected values", func() {
@@ -122,7 +126,7 @@ func TestImageValidation(t *testing.T) {
 
 	Convey("Given an image with a state that does not correspond to any expected state, it fails to validate with the expected error", t, func() {
 		image := models.Image{
-			State: "wrong",
+			State: testStateWrong,
 		}
 		err := image.Validate()
 		So(err, ShouldResemble, apierrors.ErrImageInvalidState)
@@ -130,7 +134,7 @@ func TestImageValidation(t *testing.T) {
 
 	Convey("Given an image with a state of uploaded has no upload section it fails to validate with the expected error", t, func() {
 		image := models.Image{
-			State: "uploaded",
+			State: testStateUploaded,
 		}
 		err := image.Validate()
 		So(err, ShouldResemble, apierrors.ErrImageUploadEmpty)
@@ -138,7 +142,7 @@ func TestImageValidation(t *testing.T) {
 
 	Convey("Given an image with a state of uploaded has no path in its upload section it fails to validate with the expected error", t, func() {
 		image := models.Image{
-			State:  "uploaded",
+			State:  testStateUploaded,
 			Upload: &models.Upload{},
 		}
 		err := image.Validate()
@@ -220,7 +224,7 @@ func TestImageStateTransitionAllowed(t *testing.T) {
 	})
 
 	Convey("Given an image with a wrong state value, then no transition is allowed", t, func() {
-		image := models.Image{State: "wrong"}
+		image := models.Image{State: testStateWrong}
 		validateTransitionsToCreated(image)
 	})
 
@@ -253,9 +257,9 @@ func TestImageUpdatedState(t *testing.T) {
 		image := models.Image{
 			State: models.StateImporting.String(),
 			Downloads: map[string]models.Download{
-				"original": {State: models.StateDownloadImporting.String()},
-				"var1":     {State: models.StateDownloadImported.String()},
-				"var2":     {State: models.StateDownloadFailed.String()},
+				testVariantOriginal: {State: models.StateDownloadImporting.String()},
+				testVariant1:        {State: models.StateDownloadImported.String()},
+				testVariant2:        {State: models.StateDownloadFailed.String()},
 			},
 		}
 		Convey("Then UpdatedState should be FailedImport", func() {
@@ -267,8 +271,8 @@ func TestImageUpdatedState(t *testing.T) {
 		image := models.Image{
 			State: models.StateImporting.String(),
 			Downloads: map[string]models.Download{
-				"original": {State: models.StateDownloadImported.String()},
-				"var1":     {State: models.StateDownloadImported.String()},
+				testVariantOriginal: {State: models.StateDownloadImported.String()},
+				testVariant1:        {State: models.StateDownloadImported.String()},
 			},
 		}
 		Convey("Then UpdatedState should be Impoprted", func() {
@@ -280,8 +284,8 @@ func TestImageUpdatedState(t *testing.T) {
 		image := models.Image{
 			State: models.StateImporting.String(),
 			Downloads: map[string]models.Download{
-				"original": {State: models.StateDownloadImporting.String()},
-				"var1":     {State: models.StateDownloadImported.String()},
+				testVariantOriginal: {State: models.StateDownloadImporting.String()},
+				testVariant1:        {State: models.StateDownloadImported.String()},
 			},
 		}
 		Convey("Then UpdatedState should remain Importing", func() {
@@ -293,9 +297,9 @@ func TestImageUpdatedState(t *testing.T) {
 		image := models.Image{
 			State: models.StatePublished.String(),
 			Downloads: map[string]models.Download{
-				"original": {State: models.StateDownloadCompleted.String()},
-				"var1":     {State: models.StateDownloadImported.String()},
-				"var2":     {State: models.StateDownloadFailed.String()},
+				testVariantOriginal: {State: models.StateDownloadCompleted.String()},
+				testVariant1:        {State: models.StateDownloadImported.String()},
+				testVariant2:        {State: models.StateDownloadFailed.String()},
 			},
 		}
 		Convey("Then UpdatedState should be FailedPublish", func() {
@@ -307,8 +311,8 @@ func TestImageUpdatedState(t *testing.T) {
 		image := models.Image{
 			State: models.StatePublished.String(),
 			Downloads: map[string]models.Download{
-				"original": {State: models.StateDownloadCompleted.String()},
-				"var1":     {State: models.StateDownloadCompleted.String()},
+				testVariantOriginal: {State: models.StateDownloadCompleted.String()},
+				testVariant1:        {State: models.StateDownloadCompleted.String()},
 			},
 		}
 		Convey("Then UpdatedState should be Completed", func() {
@@ -320,8 +324,8 @@ func TestImageUpdatedState(t *testing.T) {
 		image := models.Image{
 			State: models.StatePublished.String(),
 			Downloads: map[string]models.Download{
-				"original": {State: models.StateCompleted.String()},
-				"var1":     {State: models.StatePublished.String()},
+				testVariantOriginal: {State: models.StateCompleted.String()},
+				testVariant1:        {State: models.StatePublished.String()},
 			},
 		}
 		Convey("Then UpdatedState should remain Published", func() {
@@ -340,7 +344,7 @@ func validateTransitionsToCreated(image models.Image) {
 		So(image.StateTransitionAllowed(models.StatePublished.String()), ShouldBeFalse)
 	})
 	Convey("Then a transition to an invalid state is not allowed", func() {
-		So(image.StateTransitionAllowed("wrong"), ShouldBeFalse)
+		So(image.StateTransitionAllowed(testStateWrong), ShouldBeFalse)
 	})
 }
 
@@ -353,7 +357,7 @@ func TestDownloadValidation(t *testing.T) {
 
 	Convey("Given a download variant with an invalid state name, it fails to validate with the expected error", t, func() {
 		download := models.Download{
-			State: "wrong",
+			State: testStateWrong,
 		}
 		err := download.Validate()
 		So(err, ShouldResemble, apierrors.ErrImageDownloadInvalidState)
@@ -518,7 +522,7 @@ func TestDownloadStateTransitionAllowed(t *testing.T) {
 	})
 
 	Convey("Given an image download variant with a wrong state value, then no transition is allowed", t, func() {
-		download := models.Download{State: "wrong"}
+		download := models.Download{State: testStateWrong}
 		validateDownloadTransitionsToPending(download)
 	})
 
@@ -536,6 +540,6 @@ func validateDownloadTransitionsToPending(download models.Download) {
 		So(download.StateTransitionAllowed(models.StateDownloadPublished.String()), ShouldBeFalse)
 	})
 	Convey("Then a transition to an invalid state is not allowed", func() {
-		So(download.StateTransitionAllowed("wrong"), ShouldBeFalse)
+		So(download.StateTransitionAllowed(testStateWrong), ShouldBeFalse)
 	})
 }

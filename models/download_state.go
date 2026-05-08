@@ -15,6 +15,7 @@ const (
 	StateDownloadFailed
 )
 
+// nolint:goconst // not really a reused constant
 var downloadStateValues = []string{"pending", "importing", "imported", "published", "completed", "failed"}
 
 // String returns the string representation of a downlad state
