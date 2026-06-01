@@ -1102,7 +1102,7 @@ func TestUpdateImageHandler(t *testing.T) {
 			Convey("Calling image upload results in a 500 InternalError response when an invalid image uploaded event is generated, and the image is not updated in mongoDB", func() {
 				uploadedProducerErr := &kafkatest.IProducerMock{
 					SendFunc: func(ctx context.Context, schema *avro.Schema, event interface{}) error {
-						return fmt.Errorf("blah")
+						return fmt.Errorf("mock error on producer send")
 					},
 				}
 				imageAPI := GetAPIWithMocks(cfg, mongoDBMock, authHandlerMock, uploadedProducerErr, kafkaStubProducer)
@@ -2045,7 +2045,7 @@ func TestPublishImageHandler(t *testing.T) {
 			Convey("Calling 'publish image' with a 500 InternalError response when an invalid image published event is generated", func() {
 				publishedProducer := &kafkatest.IProducerMock{
 					SendFunc: func(ctx context.Context, schema *avro.Schema, event interface{}) error {
-						return fmt.Errorf("blah")
+						return fmt.Errorf("mock error on producer send")
 					},
 				}
 				imageAPI := GetAPIWithMocks(cfg, mongoDBMock, authHandlerMock, kafkaStubProducer, publishedProducer)
